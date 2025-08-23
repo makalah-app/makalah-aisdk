@@ -1,0 +1,362 @@
+// ============================================
+// MAKALAH AI: Admin Authentication Middleware
+// ============================================
+// Task P06.1: Admin route protection middleware
+// Created: August 2025
+// Purpose: Secure admin-only routes and API endpoints
+
+import { NextRequest, NextResponse } from 'next/server'
+import { AdminRBAC, AdminAuditLogger, AdminSessionManager, AdminSecurity } from '@/lib/admin-rbac'
+import type { JWTPayload } from '@/lib/jwt-security'
+
+// ============================================
+// ADMIN MIDDLEWARE CONFIGURATION
+// ============================================
+
+export interface AdminMiddlewareConfig {
+  requirePermission?: keyof import('@/lib/admin-rbac').AdminPermissions
+  requireRole?: import('@/lib/admin-rbac').AdminRole
+  enableAuditLog?: boolean
+  enableRateLimit?: boolean
+  checkIPWhitelist?: boolean
+}
+
+// ============================================
+// MAIN ADMIN MIDDLEWARE
+// ============================================
+
+export async function withAdminAuth(
+  request: NextRequest,
+  config: AdminMiddlewareConfig = {}
+): Promise<NextResponse | { user: JWTPayload; proceed: boolean }> {
+  try {
+    const {
+      requirePermission,
+      requireRole,
+      enableAuditLog = true,
+      enableRateLimit = true,
+      checkIPWhitelist = false,
+    } = config
+
+    // Get client IP and user agent for security checks
+    const clientIP = getClientIP(request)
+    const userAgent = request.headers.get('user-agent') || ''
+
+    // Check IP whitelist if enabled
+    if (checkIPWhitelist && !AdminSecurity.isAllowedIP(clientIP)) {
+      return NextResponse.json(
+        { error: 'Access denied from this IP address' },
+        { status: 403 }
+      )
+    }
+
+    // Check for suspicious user agents
+    if (AdminSecurity.isSuspiciousUserAgent(userAgent)) {
+      return NextResponse.json(
+        { error: 'Suspicious client detected' },
+        { status: 403 }
+      )
+    }
+
+    // Validate admin credentials
+    const validation = await AdminRBAC.validateAdminFromRequest(request)
+
+    if (!validation.isValid || !validation.user) {
+      return NextResponse.json(
+        { 
+          error: validation.error || 'Admin authentication required',
+          code: 'ADMIN_AUTH_REQUIRED' 
+        },
+        { status: 401 }
+      )
+    }
+
+    const admin = validation.user
+
+    // Check specific role requirement
+    if (requireRole && admin.role !== requireRole) {
+      return NextResponse.json(
+        { 
+          error: `Role '${requireRole}' required, but user has '${admin.role}'`,
+          code: 'INSUFFICIENT_ROLE' 
+        },
+        { status: 403 }
+      )
+    }
+
+    // Check specific permission requirement
+    if (requirePermission && !AdminRBAC.hasPermission(admin, requirePermission)) {
+      return NextResponse.json(
+        { 
+          error: `Permission '${requirePermission}' required`,
+          code: 'INSUFFICIENT_PERMISSION' 
+        },
+        { status: 403 }
+      )
+    }
+
+    // Rate limiting check
+    if (enableRateLimit) {
+      const rateLimit = await AdminSecurity.checkRateLimit(admin.userId, request.method)
+      
+      if (!rateLimit.allowed) {
+        return NextResponse.json(
+          { 
+            error: 'Rate limit exceeded',
+            code: 'RATE_LIMIT_EXCEEDED',
+            resetTime: rateLimit.resetTime 
+          },
+          { status: 429 }
+        )
+      }
+    }
+
+    // Audit logging
+    if (enableAuditLog) {
+      await AdminAuditLogger.logAdminAction({
+        admin_id: admin.userId,
+        admin_email: admin.email,
+        admin_role: admin.role as import('@/lib/admin-rbac').AdminRole,
+        action: `${request.method}_${extractResourceFromPath(request.nextUrl.pathname)}`,
+        resource: 'admin_api',
+        resource_id: extractResourceId(request.nextUrl.pathname),
+        details: {
+          path: request.nextUrl.pathname,
+          method: request.method,
+          query: Object.fromEntries(request.nextUrl.searchParams),
+          user_agent: userAgent,
+        },
+        ip_address: clientIP,
+        user_agent: userAgent,
+      })
+    }
+
+    // Update session activity
+    const sessionId = request.headers.get('x-session-id')
+    if (sessionId) {
+      await AdminSessionManager.updateActivity(sessionId)
+    }
+
+    return { user: admin, proceed: true }
+
+  } catch (error) {
+    console.error('[ADMIN MIDDLEWARE] Unexpected error:', error)
+    return NextResponse.json(
+      { 
+        error: 'Internal authentication error',
+        code: 'AUTH_INTERNAL_ERROR' 
+      },
+      { status: 500 }
+    )
+  }
+}
+
+// ============================================
+// ADMIN API ROUTE WRAPPER
+// ============================================
+
+export function withAdminAPI<T = any>(
+  handler: (request: NextRequest, user: JWTPayload) => Promise<NextResponse | Response>,
+  config?: AdminMiddlewareConfig
+) {
+  return async (request: NextRequest): Promise<NextResponse | Response> => {
+    const authResult = await withAdminAuth(request, config)
+
+    // If authResult is NextResponse, it means authentication failed
+    if (authResult instanceof NextResponse) {
+      return authResult
+    }
+
+    // Authentication successful, call the actual handler
+    return handler(request, authResult.user)
+  }
+}
+
+// ============================================
+// ADMIN COMPONENT PROTECTION HOC
+// ============================================
+
+export function withAdminComponent<T extends object>(
+  Component: React.ComponentType<T>,
+  options: {
+    requirePermission?: keyof import('@/lib/admin-rbac').AdminPermissions
+    requireRole?: import('@/lib/admin-rbac').AdminRole
+    fallbackComponent?: React.ComponentType
+  } = {}
+): React.ComponentType<T> {
+  return function AdminProtectedComponent(props: T) {
+    const { user, isAuthenticated, isLoading } = require('@/hooks/useSecureAuth').useSecureAuth()
+    const { requirePermission, requireRole, fallbackComponent: Fallback } = options
+
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3 text-gray-600 dark:text-gray-400">
+            Memverifikasi akses admin...
+          </span>
+        </div>
+      )
+    }
+
+    if (!isAuthenticated || !AdminRBAC.isAdmin(user)) {
+      if (Fallback) {
+        return <Fallback />
+      }
+      
+      return (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center max-w-md mx-auto">
+            <div className="text-6xl mb-4">🔒</div>
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              Akses Admin Diperlukan
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Halaman ini hanya dapat diakses oleh administrator. 
+              Silakan login dengan akun admin untuk melanjutkan.
+            </p>
+            <div className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
+              <p>🔐 Akun Anda: {user?.email || 'Tidak diketahui'}</p>
+              <p>👤 Role: {user?.role || 'user'}</p>
+              <p>⚠️ Diperlukan: admin atau super_admin</p>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Check specific role requirement
+    if (requireRole && user.role !== requireRole) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center max-w-md mx-auto">
+            <div className="text-6xl mb-4">⛔</div>
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              Role Tidak Mencukupi
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Role '{requireRole}' diperlukan, tetapi Anda memiliki role '{user.role}'.
+            </p>
+          </div>
+        </div>
+      )
+    }
+
+    // Check specific permission requirement
+    if (requirePermission && !AdminRBAC.hasPermission(user, requirePermission)) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center max-w-md mx-auto">
+            <div className="text-6xl mb-4">🚫</div>
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              Permission Tidak Mencukupi
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Permission '{requirePermission}' diperlukan untuk mengakses fitur ini.
+            </p>
+          </div>
+        </div>
+      )
+    }
+
+    return <Component {...props} />
+  }
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+function getClientIP(request: NextRequest): string {
+  // Try various headers to get real client IP
+  return (
+    request.headers.get('x-forwarded-for')?.split(',')[0] ||
+    request.headers.get('x-real-ip') ||
+    request.headers.get('cf-connecting-ip') ||
+    request.headers.get('x-client-ip') ||
+    'unknown'
+  )
+}
+
+function extractResourceFromPath(pathname: string): string {
+  // Extract resource name from API path like /api/admin/templates -> templates
+  const parts = pathname.split('/')
+  const adminIndex = parts.indexOf('admin')
+  
+  if (adminIndex !== -1 && adminIndex + 1 < parts.length) {
+    return parts[adminIndex + 1]
+  }
+  
+  return 'unknown'
+}
+
+function extractResourceId(pathname: string): string | undefined {
+  // Extract resource ID from paths like /api/admin/templates/123 -> 123
+  const parts = pathname.split('/')
+  const lastPart = parts[parts.length - 1]
+  
+  // Check if last part looks like an ID (UUID or number)
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastPart) ||
+      /^\d+$/.test(lastPart)) {
+    return lastPart
+  }
+  
+  return undefined
+}
+
+// ============================================
+// ADMIN ROUTE CONFIGURATION
+// ============================================
+
+export const AdminRouteConfig = {
+  // Template management routes
+  TEMPLATE_CREATE: {
+    requirePermission: 'canCreateTemplate' as const,
+    enableAuditLog: true,
+    enableRateLimit: true,
+  },
+  TEMPLATE_UPDATE: {
+    requirePermission: 'canUpdateTemplate' as const,
+    enableAuditLog: true,
+    enableRateLimit: true,
+  },
+  TEMPLATE_DELETE: {
+    requirePermission: 'canDeleteTemplate' as const,
+    enableAuditLog: true,
+    enableRateLimit: true,
+  },
+  
+  // Analytics routes
+  ANALYTICS_VIEW: {
+    requirePermission: 'canViewAnalytics' as const,
+    enableAuditLog: false,
+    enableRateLimit: false,
+  },
+  
+  // Data management routes
+  DATA_EXPORT: {
+    requirePermission: 'canExportData' as const,
+    enableAuditLog: true,
+    enableRateLimit: true,
+  },
+  DATA_IMPORT: {
+    requirePermission: 'canImportData' as const,
+    enableAuditLog: true,
+    enableRateLimit: true,
+  },
+  
+  // Version control routes
+  VERSION_MANAGE: {
+    requirePermission: 'canManageVersions' as const,
+    enableAuditLog: true,
+    enableRateLimit: true,
+  },
+  
+  // User management routes
+  USER_MANAGE: {
+    requirePermission: 'canManageUsers' as const,
+    enableAuditLog: true,
+    enableRateLimit: true,
+    checkIPWhitelist: true, // Extra security for user management
+  },
+} as const

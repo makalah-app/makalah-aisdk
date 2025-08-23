@@ -1,0 +1,427 @@
+@tailwind base;
+@tailwind components; 
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 94.1%;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.3);
+}
+
+/* Loading animations */
+.loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.loading-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: currentColor;
+  opacity: 0.4;
+  animation: loading-dot 1.4s infinite ease-in-out;
+}
+
+.loading-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes loading-dot {
+  0%, 80%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* Message animation */
+.message-enter {
+  animation: messageEnter 0.3s ease-out;
+}
+
+@keyframes messageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 🚀 SMOOTH TRANSITION SYSTEM - GPU ACCELERATED */
+
+/* State transition fundamentals */
+.smooth-transition {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
+}
+
+.smooth-transition-fast {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
+}
+
+.smooth-transition-slow {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
+}
+
+/* Phase transition animations */
+.phase-enter {
+  animation: phaseEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.phase-exit {
+  animation: phaseExit 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes phaseEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translateY(2px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes phaseExit {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+/* Enhanced loading dots with staggered animation */
+.loading-dots-enhanced {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.loading-dots-enhanced span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: currentColor;
+  opacity: 0.3;
+  animation: loadingDotEnhanced 1.6s infinite cubic-bezier(0.4, 0, 0.6, 1);
+  will-change: transform, opacity;
+}
+
+.loading-dots-enhanced span:nth-child(1) {
+  animation-delay: -0.4s;
+}
+
+.loading-dots-enhanced span:nth-child(2) {
+  animation-delay: -0.2s;
+}
+
+@keyframes loadingDotEnhanced {
+  0%, 80%, 100% {
+    opacity: 0.3;
+    transform: scale(1) translateZ(0);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.3) translateZ(0);
+  }
+}
+
+/* Smooth text reveal animation */
+.text-reveal {
+  animation: textReveal 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes textReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  60% {
+    opacity: 0.8;
+    transform: translateY(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Cursor animation with smooth blinking */
+.cursor-smooth {
+  animation: cursorSmooth 1.2s infinite;
+  will-change: opacity;
+}
+
+@keyframes cursorSmooth {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+/* Progress bar smooth animation */
+.progress-smooth {
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width;
+}
+
+/* Hover states with smooth transitions */
+.hover-lift {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+              box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, box-shadow;
+}
+
+.hover-lift:hover {
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dark .hover-lift:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* State indicator with smooth color transitions */
+.state-indicator {
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: background-color, border-color, color;
+}
+
+/* Backdrop blur with smooth transition */
+.backdrop-smooth {
+  backdrop-filter: blur(8px);
+  transition: backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: backdrop-filter;
+}
+
+/* Speed change feedback animation */
+.speed-change-feedback {
+  animation: speedChangePulse 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes speedChangePulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(var(--primary) / 0.4);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 4px rgba(var(--primary) / 0.2);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(var(--primary) / 0);
+  }
+}
+
+/* Enhanced message appearance */
+.message-appear {
+  animation: messageAppear 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes messageAppear {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+  }
+  60% {
+    opacity: 0.8;
+    transform: translateY(4px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Mobile optimizations */
+@media (prefers-reduced-motion: reduce) {
+  .smooth-transition,
+  .smooth-transition-fast,
+  .smooth-transition-slow,
+  .phase-enter,
+  .phase-exit,
+  .text-reveal,
+  .cursor-smooth,
+  .progress-smooth,
+  .hover-lift,
+  .state-indicator,
+  .backdrop-smooth {
+    animation: none !important;
+    transition: none !important;
+  }
+  
+  .loading-dots-enhanced span {
+    animation: none !important;
+    opacity: 0.6 !important;
+  }
+}
+
+/* Performance optimizations */
+@media (max-width: 768px) {
+  .smooth-transition,
+  .smooth-transition-fast,
+  .smooth-transition-slow {
+    transition-duration: 0.1s;
+  }
+  
+  .phase-enter {
+    animation-duration: 0.2s;
+  }
+  
+  .loading-dots-enhanced span {
+    animation-duration: 1.2s;
+  }
+}
+
+/* Professional enhancements */
+.shadow-cookbook {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.dark .shadow-cookbook {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* 🚀 JENIS CHAT SELECTOR ANIMATIONS */
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Enhanced modal backdrop */
+.modal-backdrop {
+  backdrop-filter: blur(8px);
+  transition: backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-up {
+    animation: none;
+  }
+  
+  .modal-backdrop {
+    backdrop-filter: none;
+  }
+}
